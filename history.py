@@ -30,8 +30,8 @@ app.layout = html.Div([
 
 def display_candlestick(value):
     api = alpaca.REST('PK7Z5SUF67ICPDK04R2M', 'ITAqIWxumbD67keejeh7yXTnrgSfnlZZZiXb759t', 'https://paper-api.alpaca.markets')
-    value1 = str(' " ' + value1 + ' " ')
-    df = api.get_barset("AAPL", "minute", limit=1000).df["AAPL"]
+    #value1 = str(' " ' + value1 + ' " ')
+    df = api.get_barset("AAPL", "day", limit=400).df["AAPL"]
     s = df.index.to_pydatetime()
     
     fig = make_subplots(specs=[[{"secondary_y": True}]])
