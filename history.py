@@ -31,7 +31,7 @@ app.layout = html.Div(children = [
             html.Center(html.Div(html.Button('Submit', id='submit-val', n_clicks=0))),
             html.Div(dcc.Checklist(id='toggle-rangeslider', value=['slider'])),
             html.Div(dcc.Graph(id="graph")),
-            html.Center(html.Button('Collect Data', id='submit-val1', n_clicks=0)),
+            html.Center(html.Button("Grab Data", id='submit-val1', n_clicks=0)),
             html.Center(html.Div(id='textarea-example-output', style={'whiteSpace': 'pre-line'})),
             html.Div(id='nouse', style={'display': 'none'})
 ]) 
@@ -118,7 +118,7 @@ def display_candlestick(n_clicks, tspan, togg, itspan, ticker):
         State('input-on-submit', "value"),
         State('submit-val', 'n_clicks')
 )
-def making_dataset(tspan, itspan, ticker, n_clicks1, n_clicks):
+def making_dataset(n_clicks1, tspan, itspan, ticker, n_clicks):
     if n_clicks>0 and n_clicks1:    
         api = alpaca.REST('PK7Z5SUF67ICPDK04R2M', 'ITAqIWxumbD67keejeh7yXTnrgSfnlZZZiXb759t', 'https://paper-api.alpaca.markets')
         df = api.get_barset(ticker, itspan, limit=tspan).df[ticker]
