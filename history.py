@@ -145,8 +145,8 @@ def making_dataset(n_clicks1, pts, tspan, itspan, ticker, n_clicks):
         df = api.get_barset(ticker, itspan, limit=tspan).df[ticker]
 
         pts = yaml.load(pts)
-        rang1 = pts['x'][0]
-        rang2 = pts['x'][1]
+        rang1 = pts[0]['text']
+        rang2 = pts[len(pts)-1]['text']
         rang = [rang1, rang2]
 
         df.index = [x.strftime('%Y-%m-%d %H:%M:%S') for x in df.index]
@@ -210,7 +210,7 @@ def testfunc(clicks, tspan, itspan, ticker):
     
     trace1 = go.Scatter(x=k,y=df['close'],mode='markers+lines',text=[x.strftime('%Y-%m-%d %H:%M:%S') for x in df.index])
 
-    layout = go.Layout(title='Use lasso or box tool to select', xaxis={'type':'category'})
+    layout = go.Layout(title='Use lasso or box tool to select', xaxis = {'type':'category'})
     return {'data':[trace1],'layout':layout}
 
 # Show result of selecting data with either box select or lasso
@@ -218,7 +218,7 @@ def testfunc(clicks, tspan, itspan, ticker):
 @app.callback(Output('display','children'), Output('nouse','children'), [Input('carGraph','selectedData')])
 def selectData(selectData):
     if selectData:
-        return str('Points in the following range will be added to the dataset: {}'.format(selectData)), str(selectData['range'])
+        return str('Points in the following range will be added to the dataset: {}'.format(selectData)), str(selectData['points'])
     else:
         return 0
 #Extract the 'text' component and use it to filter the dataframe and then create another graph
