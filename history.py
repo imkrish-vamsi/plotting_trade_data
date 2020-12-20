@@ -36,7 +36,7 @@ app.layout = html.Div(children = [dcc.ConfirmDialog(id='confirm', message='DATA 
             html.Center(html.Div(html.Button('Submit', id='submit-val', n_clicks=0))),
             html.Div(dcc.Graph(id="graph")),
             html.Div(dcc.Graph(id='carGraph')), #Graph that displays all data
-            html.Div(dcc.Graph(id='filterGraph', config = {'staticPlot':True})), #Graph that shows only filtered data
+            html.Div(dcc.Graph(id='filterGraph')), #Graph that shows only filtered data
             html.Div(id='display'),  #To show format of selectData
             html.Center(html.Button("Grab Data", id='submit-val1', n_clicks=0)),
             html.Center(html.Div(id='textarea-example-output', style={'whiteSpace': 'pre-line'})),
@@ -133,14 +133,13 @@ def update_output(n_clicks):
 
 @app.callback(Output('nouse1', 'children'),
         Input("submit-val1", 'n_clicks'),
-        Input("nouse", 'children'),
+        State("nouse", 'children'),
         State('input-on-submit1', "value"),
         State('demo-dropdown', 'value'), 
-        State('input-on-submit', "value"),
-        State('submit-val', 'n_clicks')
+        State('input-on-submit', "value")
 )
-def making_dataset(n_clicks1, pts, tspan, itspan, ticker, n_clicks):
-    if n_clicks>0 and n_clicks1:    
+def making_dataset(n_clicks1, pts, tspan, itspan, ticker):
+    if n_clicks1:    
         api = alpaca.REST('PK7Z5SUF67ICPDK04R2M', 'ITAqIWxumbD67keejeh7yXTnrgSfnlZZZiXb759t', 'https://paper-api.alpaca.markets')
         df = api.get_barset(ticker, itspan, limit=tspan).df[ticker]
 
@@ -171,6 +170,7 @@ def making_dataset(n_clicks1, pts, tspan, itspan, ticker, n_clicks):
         # write out the new sheet
         df3.to_excel(writer,index=False,header=False,startrow=len(reader)+1)
         writer.close()
+        n_clicks1 = 0
         return html.Div(html.H4(children="Running!!"))
  
 
@@ -180,7 +180,7 @@ def making_dataset(n_clicks1, pts, tspan, itspan, ticker, n_clicks):
     Input('submit-val', 'n_clicks')
     )
 def update_tables(n_clicks1, n_clicks):
-    if n_clicks>0 and n_clicks1>=0:    
+    if n_clicks>0 or n_clicks1>0:    
         df11 = pd.read_excel(r'X:\Upwork\projects\plotting_trade_data\data_ohlc.xlsx',engine='openpyxl')  # pip3 install xlrd
         return html.Div(children=[
             html.Br(),
@@ -220,7 +220,7 @@ def selectData(selectData):
     if selectData:
         return str('Points in the following range will be added to the dataset: {}'.format(selectData)), str(selectData['points'])
     else:
-        return 0
+        return str('None selected')
 #Extract the 'text' component and use it to filter the dataframe and then create another graph
     
 @app.callback(Output('filterGraph','figure'),[Input('carGraph','selectedData')], State('input-on-submit1', "value"),
