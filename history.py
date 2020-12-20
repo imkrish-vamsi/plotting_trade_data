@@ -7,6 +7,7 @@ from dash.dependencies import Output, State, Input
 
 import plotly.graph_objects as go                                     
 from plotly.subplots import make_subplots
+import plotly.express as px
 
 import pandas as pd
 from datetime import datetime
@@ -76,8 +77,7 @@ def display_candlestick(n_clicks, tspan, itspan, ticker):
         fig.update_yaxes(title_text="<b>VOLUME</b>", secondary_y=True)
         fig.update_yaxes(title_text="<b>STOCK PRICE</b>", secondary_y=False)
         
-        fig.update_layout(showlegend=False,
-                height=500, width=1300, title=ticker, xaxis = {"showspikes": True}, yaxis = {"showspikes": True})
+        fig.update_layout(showlegend=False, title=ticker, xaxis = {"showspikes": True}, yaxis = {"showspikes": True})
         #print(go.layout.XAxis(fig))
         fig.update_layout(xaxis=dict(
               rangeselector=dict(
@@ -115,8 +115,7 @@ def display_candlestick(n_clicks, tspan, itspan, ticker):
         fig2.update_yaxes(title_text="<b>VOLUME</b>", secondary_y=True)
         fig2.update_yaxes(title_text="<b>STOCK PRICE</b>", secondary_y=False)
         fig2.update_layout(#xaxis_rangeslider_visible='slider' in togg,
-                 showlegend=False,
-                height=750, width=1300, title="Ticker")            
+                 showlegend=False, title="Ticker")            
         return fig2
 
 @app.callback(Output('confirm', 'displayed'),
@@ -211,7 +210,7 @@ def testfunc(clicks, tspan, itspan, ticker):
     
     trace1 = go.Scatter(x=k,y=df['close'],mode='markers+lines',text=[x.strftime('%Y-%m-%d %H:%M:%S') for x in df.index])
 
-    layout=go.Layout(title='Use lasso or box tool to select')
+    layout = go.Layout(title='Use lasso or box tool to select', xaxis={'type':'category'})
     return {'data':[trace1],'layout':layout}
 
 # Show result of selecting data with either box select or lasso
