@@ -33,15 +33,14 @@ app.layout = html.Div(children = [dcc.ConfirmDialog(id='confirm', message='DATA 
             {'label': '1 Day', 'value': 'day'}], placeholder="Span of each OHLC", value = "day", style={'width': '40%'})])),
             html.Br(),
             html.Center(html.Div(html.Button('Submit', id='submit-val', n_clicks=0))),
-            #html.Div(dcc.Checklist(id='toggle-rangeslider', value=['slider'])),
             html.Div(dcc.Graph(id="graph")),
             html.Div(dcc.Graph(id='carGraph')), #Graph that displays all data
             html.Div(dcc.Graph(id='filterGraph', config = {'staticPlot':True})), #Graph that shows only filtered data
             html.Div(id='display'),  #To show format of selectData
             html.Center(html.Button("Grab Data", id='submit-val1', n_clicks=0)),
             html.Center(html.Div(id='textarea-example-output', style={'whiteSpace': 'pre-line'})),
-            html.Div(id='nouse1', style={'display':'none'}),
-            html.Div(id='nouse', style={'display':'none'})
+            html.Div(id='nouse1', style={'display':'none'}),  # dummy boxes
+            html.Div(id='nouse', style={'display':'none'})      # dummy boxes
 
   
 ]) 
@@ -50,13 +49,10 @@ app.layout = html.Div(children = [dcc.ConfirmDialog(id='confirm', message='DATA 
         Output("graph", "figure"),
         Input('submit-val', 'n_clicks'),
         Input('input-on-submit1', "value"),
-        #Input("toggle-rangeslider", "value"),
         Input('demo-dropdown', 'value'), 
         State('input-on-submit', "value")
     )
-def display_candlestick(n_clicks, tspan, 
-            #togg,
-             itspan, ticker):
+def display_candlestick(n_clicks, tspan, itspan, ticker):
 
     if n_clicks>0 and ticker!= None :
         api = alpaca.REST('PK7Z5SUF67ICPDK04R2M', 'ITAqIWxumbD67keejeh7yXTnrgSfnlZZZiXb759t', 'https://paper-api.alpaca.markets')
@@ -153,8 +149,7 @@ def making_dataset(n_clicks1, pts, tspan, itspan, ticker, n_clicks):
         rang1 = pts['x'][0]
         rang2 = pts['x'][1]
         rang = [rang1, rang2]
-        #rang['x'][0].tz=None
-        #rang['x'][1].tz=None
+
         df.index = [x.strftime('%Y-%m-%d %H:%M:%S') for x in df.index]
         i = 0
         for str_data_time in rang:
@@ -162,7 +157,6 @@ def making_dataset(n_clicks1, pts, tspan, itspan, ticker, n_clicks):
             rang[i] = output
             i += 1
         df = df.truncate(before = rang1, after = rang2) 
-        #df.index = [x.strftime('%Y-%m-%d %H:%M:%S.%f') for x in df.index]
         
         df3 = pd.DataFrame({'SYMBOL': ticker,
                    'TIME': df.index, 'OPEN': df['open'],
