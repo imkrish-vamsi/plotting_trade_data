@@ -13,9 +13,12 @@ from datetime import datetime
 import matplotlib.dates as mdates
 import alpaca_trade_api as alpaca                                     # pip3 install alpaca-trade-api
 
+from ipywidgets import interactive, HBox, VBox
 from openpyxl import Workbook, load_workbook                                         # pip3 install openpyxl
+import yaml
 
 external_stylesheets = ['https://codepen.io/chriddyp/pen/bWLwgP.css']
+
 
 app = dash.Dash(__name__, external_stylesheets=external_stylesheets, 
                     suppress_callback_exceptions=True, prevent_initial_callbacks=True)
@@ -32,9 +35,15 @@ app.layout = html.Div(children = [dcc.ConfirmDialog(id='confirm', message='DATA 
             html.Center(html.Div(html.Button('Submit', id='submit-val', n_clicks=0))),
             #html.Div(dcc.Checklist(id='toggle-rangeslider', value=['slider'])),
             html.Div(dcc.Graph(id="graph")),
+            html.Div(dcc.Graph(id='carGraph')), #Graph that displays all data
+            html.Div(dcc.Graph(id='filterGraph', config = {'staticPlot':True})), #Graph that shows only filtered data
+            html.Div(id='display'),  #To show format of selectData
             html.Center(html.Button("Grab Data", id='submit-val1', n_clicks=0)),
             html.Center(html.Div(id='textarea-example-output', style={'whiteSpace': 'pre-line'})),
-            html.Div(id='nouse', style={'display': 'none'})
+            html.Div(id='nouse1', style={'display':'none'}),
+            html.Div(id='nouse', style={'display':'none'})
+
+  
 ]) 
 
 @app.callback(
@@ -55,7 +64,7 @@ def display_candlestick(n_clicks, tspan,
 
         s = df.index.to_pydatetime()
     
-        fig = make_subplots(rows=2, cols=1, specs=[[{"secondary_y": True}], [{}]], shared_xaxes=True, vertical_spacing=0.2)
+        fig = make_subplots(specs=[[{"secondary_y": True}]])
 
         # include candlestick with rangeselector
         fig.add_trace(go.Candlestick(x=s,
@@ -70,13 +79,11 @@ def display_candlestick(n_clicks, tspan,
         fig.layout.yaxis2.showgrid=False
         fig.update_yaxes(title_text="<b>VOLUME</b>", secondary_y=True)
         fig.update_yaxes(title_text="<b>STOCK PRICE</b>", secondary_y=False)
-        fc = go.Scatter(x=s, y=df['close'])
-        fig.add_trace(fc, row=2, col=1)
+        
         fig.update_layout(showlegend=False,
-                height=750, width=1300, title=ticker)
+                height=500, width=1300, title=ticker, xaxis = {"showspikes": True}, yaxis = {"showspikes": True})
         #print(go.layout.XAxis(fig))
-        fig.update_layout(
-            xaxis=dict(
+        fig.update_layout(xaxis=dict(
               rangeselector=dict(
               buttons=list([
                 dict(count=1,
@@ -104,8 +111,6 @@ def display_candlestick(n_clicks, tspan,
         type="date"
            )
         )
-        #print(go.layout.XAxis(fig))
-
         return fig
 
     else:
@@ -131,20 +136,36 @@ def update_output(n_clicks):
     if n_clicks:
         return 'You Grabbed the Data {} times in this session!'.format(n_clicks)
 
-@app.callback(Output('nouse', 'children'),
+@app.callback(Output('nouse1', 'children'),
         Input("submit-val1", 'n_clicks'),
+        Input("nouse", 'children'),
         State('input-on-submit1', "value"),
         State('demo-dropdown', 'value'), 
         State('input-on-submit', "value"),
         State('submit-val', 'n_clicks')
 )
-def making_dataset(n_clicks1, tspan, itspan, ticker, n_clicks):
+def making_dataset(n_clicks1, pts, tspan, itspan, ticker, n_clicks):
     if n_clicks>0 and n_clicks1:    
         api = alpaca.REST('PK7Z5SUF67ICPDK04R2M', 'ITAqIWxumbD67keejeh7yXTnrgSfnlZZZiXb759t', 'https://paper-api.alpaca.markets')
         df = api.get_barset(ticker, itspan, limit=tspan).df[ticker]
-        k = df.index.to_pydatetime()
+
+        pts = yaml.load(pts)
+        rang1 = pts['x'][0]
+        rang2 = pts['x'][1]
+        rang = [rang1, rang2]
+        #rang['x'][0].tz=None
+        #rang['x'][1].tz=None
+        df.index = [x.strftime('%Y-%m-%d %H:%M:%S') for x in df.index]
+        i = 0
+        for str_data_time in rang:
+            output = str_data_time.split(".")[0]
+            rang[i] = output
+            i += 1
+        df = df.truncate(before = rang1, after = rang2) 
+        #df.index = [x.strftime('%Y-%m-%d %H:%M:%S.%f') for x in df.index]
+        
         df3 = pd.DataFrame({'SYMBOL': ticker,
-                   'TIME': [k[t].date() for t in range(len(k))], 'OPEN': df['open'],
+                   'TIME': df.index, 'OPEN': df['open'],
                    'HIGH': df['high'], 'LOW': df['low'],
                    'CLOSE': df['close'], 'VOLUME': df['volume']})
         writer = pd.ExcelWriter(r"X:\Upwork\projects\plotting_trade_data\data_ohlc.xlsx", engine='openpyxl')
@@ -184,6 +205,55 @@ def update_tables(n_clicks1, n_clicks):
             ])
         ]) 
 
+
+@app.callback(Output('carGraph','figure'),[Input('submit-val','n_clicks')], 
+            State('input-on-submit1', "value"),
+            State('demo-dropdown', 'value'), 
+            State('input-on-submit', "value"))            
+def testfunc(clicks, tspan, itspan, ticker):
+    api = alpaca.REST('PK7Z5SUF67ICPDK04R2M', 'ITAqIWxumbD67keejeh7yXTnrgSfnlZZZiXb759t', 'https://paper-api.alpaca.markets')
+    df = api.get_barset(ticker, itspan, limit=tspan).df[ticker]    
+    k = df.index.to_pydatetime()
+    
+    trace1 = go.Scatter(x=k,y=df['close'],mode='markers+lines',text=[x.strftime('%Y-%m-%d %H:%M:%S') for x in df.index])
+
+    layout=go.Layout(title='Use lasso or box tool to select')
+    return {'data':[trace1],'layout':layout}
+
+# Show result of selecting data with either box select or lasso
+    
+@app.callback(Output('display','children'), Output('nouse','children'), [Input('carGraph','selectedData')])
+def selectData(selectData):
+    if selectData:
+        return str('Points in the following range will be added to the dataset: {}'.format(selectData)), str(selectData['range'])
+    else:
+        return 0
+#Extract the 'text' component and use it to filter the dataframe and then create another graph
+    
+@app.callback(Output('filterGraph','figure'),[Input('carGraph','selectedData')], State('input-on-submit1', "value"),
+            State('demo-dropdown', 'value'), 
+            State('input-on-submit', "value"))
+def selectData3(selectData, tspan, itspan, ticker):
+    if selectData:
+        api = alpaca.REST('PK7Z5SUF67ICPDK04R2M', 'ITAqIWxumbD67keejeh7yXTnrgSfnlZZZiXb759t', 'https://paper-api.alpaca.markets')
+        df4 = api.get_barset(ticker, itspan, limit=tspan).df[ticker]
+        filtList = []
+        for i in range(len(selectData['points'])):
+            filtList.append(selectData['points'][i]['text'])
+        df4['time'] = [x.strftime('%Y-%m-%d %H:%M:%S') for x in df4.index]
+        filtList = [str(x) for x in filtList]
+        df4['time']=[str(x) for x in df4['time']]
+
+        filtCars = df4[df4['time'].isin(filtList)]
+    
+        trace2 = go.Scatter(x=filtCars.index.to_pydatetime(), y=filtCars['close'], mode='markers+lines', text=filtCars.index)
+        layout2 = go.Layout(title='Grabbed Data')
+        return {'data':[trace2],'layout':layout2}  
+
+    else:
+        trace2 = go.Scatter()
+        layout2 = go.Layout()
+        return {'data':[trace2],'layout':layout2} 
 
 if __name__ == '__main__':
     app.run_server(debug=True)
