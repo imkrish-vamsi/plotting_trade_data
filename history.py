@@ -76,12 +76,10 @@ def display_candlestick(n_clicks, tspan, itspan, ticker):
         fig.layout.yaxis2.showgrid=False
         fig.update_yaxes(title_text="<b>VOLUME</b>", secondary_y=True)
         fig.update_yaxes(title_text="<b>STOCK PRICE</b>", secondary_y=False)
-        
+
         fig.update_layout(showlegend=False, title=ticker, xaxis = {"showspikes": True}, yaxis = {"showspikes": True})
-        #print(go.layout.XAxis(fig))
-        fig.update_layout(xaxis=dict(
-              rangeselector=dict(
-              buttons=list([
+        fig.update_layout(xaxis=dict(rangeselector=dict(
+            buttons=list([
                 dict(count=1,
                      label="1m",
                      step="month",
@@ -101,12 +99,7 @@ def display_candlestick(n_clicks, tspan, itspan, ticker):
                 dict(step="all")
             ])
         ),
-        rangeslider=dict(
-            visible=True
-        ),
-        type="date"
-           )
-        )
+        rangeslider=dict(visible=True), type="date"))
         return fig
 
     else:
@@ -199,7 +192,7 @@ def update_tables(n_clicks1, n_clicks):
         ]) 
 
 
-@app.callback(Output('carGraph','figure'),[Input('submit-val','n_clicks')], 
+@app.callback(Output('carGraph','figure'), Input('submit-val','n_clicks'),
             State('input-on-submit1', "value"),
             State('demo-dropdown', 'value'), 
             State('input-on-submit', "value"))            
@@ -208,9 +201,30 @@ def testfunc(clicks, tspan, itspan, ticker):
     df = api.get_barset(ticker, itspan, limit=tspan).df[ticker]    
     k = df.index.to_pydatetime()
     
-    trace1 = go.Scatter(x=k,y=df['close'],mode='markers+lines',text=[x.strftime('%Y-%m-%d %H:%M:%S') for x in df.index])
-
-    layout = go.Layout(title='Use lasso or box tool to select', xaxis = {'type':'category'})
+    trace1 = go.Scatter(x=[k[i].date() for i in range(len(k))], y=df['close'],mode='markers+lines',text=[x.strftime('%Y-%m-%d %H:%M:%S') for x in df.index])
+    layout = go.Layout(title='Use lasso or box tool to select', xaxis=dict(rangeselector=dict(
+            buttons=list([
+                dict(count=1,
+                     label="1m",
+                     step="month",
+                     stepmode="backward"),
+                dict(count=6,
+                     label="6m",
+                     step="month",
+                     stepmode="backward"),
+                dict(count=1,
+                     label="YTD",
+                     step="year",
+                     stepmode="todate"),
+                dict(count=1,
+                     label="1y",
+                     step="year",
+                     stepmode="backward"),
+                dict(step="all")
+            ])
+        ),
+        rangeslider=dict(visible=True), type="category"), height = 500)
+    
     return {'data':[trace1],'layout':layout}
 
 # Show result of selecting data with either box select or lasso
