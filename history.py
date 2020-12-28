@@ -15,6 +15,7 @@ import matplotlib.dates as mdates
 import alpaca_trade_api as alpaca                                     # pip3 install alpaca-trade-api
 
 from ipywidgets import interactive, HBox, VBox
+import openpyxl as xl
 from openpyxl import Workbook, load_workbook                                         # pip3 install openpyxl
 import yaml
 
@@ -32,8 +33,9 @@ app.layout = html.Div(children = [dcc.ConfirmDialog(id='confirm', message='DATA 
             {'label': '5 Minutes', 'value': '5Min'},
             {'label': '15 Minutes', 'value': '15Min'},
             {'label': '1 Day', 'value': 'day'}], placeholder="Span of each OHLC", value = "day", style={'width': '40%'})])),
-            html.Br(),
             html.Center(html.Div(html.Button('Submit', id='submit-val', n_clicks=0))),
+            html.Br(),
+
             html.Div(dcc.Graph(id="graph")),
             html.Div(dcc.Graph(id='carGraph')), #Graph that displays all data
             html.Div(dcc.Graph(id='filterGraph')), #Graph that shows only filtered data
@@ -76,8 +78,9 @@ def display_candlestick(n_clicks, tspan, itspan, ticker):
         fig.layout.yaxis2.showgrid=False
         fig.update_yaxes(title_text="<b>VOLUME</b>", secondary_y=True)
         fig.update_yaxes(title_text="<b>STOCK PRICE</b>", secondary_y=False)
+        fig.update_yaxes(automargin=True)
 
-        fig.update_layout(showlegend=False, title=ticker, xaxis = {"showspikes": True}, yaxis = {"showspikes": True})
+        fig.update_layout(showlegend=False, title=ticker, xaxis = {"showspikes": True}, yaxis = {"showspikes": True}, height=600)
         fig.update_layout(xaxis=dict(rangeselector=dict(
             buttons=list([
                 dict(count=1,
@@ -99,13 +102,13 @@ def display_candlestick(n_clicks, tspan, itspan, ticker):
                 dict(step="all")
             ])
         ),
-        rangeslider=dict(visible=True), type="date"))
+        rangeslider=dict(visible=True), type="date"), paper_bgcolor="LightSteelBlue")
         return fig
 
     else:
         fig2 = make_subplots(specs=[[{"secondary_y": True}]])
         fig2.layout.yaxis2.showgrid=False
-        fig2.update_yaxes(title_text="<b>VOLUME</b>", secondary_y=True)
+        #fig2.update_yaxes(title_text="<b>VOLUME</b>", secondary_y=True)
         fig2.update_yaxes(title_text="<b>STOCK PRICE</b>", secondary_y=False)
         fig2.update_layout(#xaxis_rangeslider_visible='slider' in togg,
                  showlegend=False, title="Ticker")            
@@ -153,17 +156,45 @@ def making_dataset(n_clicks1, pts, tspan, itspan, ticker):
                    'TIME': df.index, 'OPEN': df['open'],
                    'HIGH': df['high'], 'LOW': df['low'],
                    'CLOSE': df['close'], 'VOLUME': df['volume']})
-        writer = pd.ExcelWriter(r"X:\Upwork\projects\plotting_trade_data\data_ohlc.xlsx", engine='openpyxl')
+        writer = pd.ExcelWriter(r"X:\Upwork\projects\plotting_trade_data\do_not_open.xlsx", engine='openpyxl')
         # try to open an existing workbook
-        writer.book = load_workbook(r'X:\Upwork\projects\plotting_trade_data\data_ohlc.xlsx')
+        writer.book = load_workbook(r'X:\Upwork\projects\plotting_trade_data\do_not_open.xlsx')
         # copy existing sheets
         writer.sheets = dict((ws.title, ws) for ws in writer.book.worksheets)
         # read existing file
-        reader = pd.read_excel(r'X:\Upwork\projects\plotting_trade_data\data_ohlc.xlsx', engine='openpyxl')
+        reader = pd.read_excel(r'X:\Upwork\projects\plotting_trade_data\do_not_open.xlsx', engine='openpyxl')
         # write out the new sheet
         df3.to_excel(writer,index=False,header=False,startrow=len(reader)+1)
         writer.close()
         n_clicks1 = 0
+
+        filename = r"X:\Upwork\projects\plotting_trade_data\do_not_open.xlsx"
+        wb1 = xl.load_workbook(filename) 
+        ws1 = wb1.worksheets[0] 
+  
+        # opening the destination excel file  
+        filename1 = r"X:\Upwork\projects\plotting_trade_data\data_ohlc.xlsx"
+        wb2 = xl.load_workbook(filename1) 
+        ws2 = wb2.active 
+  
+        # calculate total number of rows and  
+        # columns in source excel file 
+        mr = ws1.max_row 
+        mc = ws1.max_column 
+  
+        # copying the cell values from source  
+        # excel file to destination excel file 
+        for i in range (1, mr + 1): 
+            for j in range (1, mc + 1): 
+                # reading cell value from source excel file 
+                c = ws1.cell(row = i, column = j) 
+  
+                # writing the read value to destination excel file 
+                ws2.cell(row = i, column = j).value = c.value 
+  
+        # saving the destination excel file 
+        wb2.save(str(filename1)) 
+
         return html.Div(html.H4(children="Running!!"))
  
 
@@ -174,7 +205,7 @@ def making_dataset(n_clicks1, pts, tspan, itspan, ticker):
     )
 def update_tables(n_clicks1, n_clicks):
     if n_clicks>0 or n_clicks1>0:    
-        df11 = pd.read_excel(r'X:\Upwork\projects\plotting_trade_data\data_ohlc.xlsx',engine='openpyxl')  # pip3 install xlrd
+        df11 = pd.read_excel(r'X:\Upwork\projects\plotting_trade_data\do_not_open.xlsx',engine='openpyxl')  # pip3 install xlrd
         return html.Div(children=[
             html.Br(),
             html.Br(),
@@ -202,29 +233,8 @@ def testfunc(clicks, tspan, itspan, ticker):
     k = df.index.to_pydatetime()
     
     trace1 = go.Scatter(x=[k[i].date() for i in range(len(k))], y=df['close'],mode='markers+lines',text=[x.strftime('%Y-%m-%d %H:%M:%S') for x in df.index])
-    layout = go.Layout(title='Use lasso or box tool to select', xaxis=dict(rangeselector=dict(
-            buttons=list([
-                dict(count=1,
-                     label="1m",
-                     step="month",
-                     stepmode="backward"),
-                dict(count=6,
-                     label="6m",
-                     step="month",
-                     stepmode="backward"),
-                dict(count=1,
-                     label="YTD",
-                     step="year",
-                     stepmode="todate"),
-                dict(count=1,
-                     label="1y",
-                     step="year",
-                     stepmode="backward"),
-                dict(step="all")
-            ])
-        ),
-        rangeslider=dict(visible=True), type="category"), height = 500)
-    
+    layout = go.Layout(title='Use lasso or box tool to select', xaxis=dict(rangeslider=dict(visible=True), type="category", showgrid=False), yaxis=dict(title_text="<b>CLOSING PRICE</b>", showgrid=False), paper_bgcolor="LightSteelBlue", height = 600)
+
     return {'data':[trace1],'layout':layout}
 
 # Show result of selecting data with either box select or lasso
