@@ -1,6 +1,8 @@
 # plotting_trade_data
 Preparing a dataset manually through data selection on interactive plots.  
+WARNING: OPEN ONLY ONE PLOT AT A TIME. DON'T FORGET TO CLOSE THE PLOT AFTER INSPECTING OR SAVING.  
 
+PLOTS  
 PLEASE VISIT: https://kevinsprojects.wordpress.com/2014/12/13/short-time-fourier-transform-using-python-and-numpy/  
 In this implementation, fft_size is the number of samples in the fast fourier transform. Setting that value is a tradeoff between the time resolution and frequency resolution you want.  
 For example, let’s assume we’re processing a signal with sampling rate of 1000 Hz (and therefore by the Nyqist theorem, a maximum possible recoverable spectrum of 500 Hz). If we choose fft_size = 500, then for each hop, a window of 500 samples will be extracted from the data and turned into 500 individual frequency bins.  
