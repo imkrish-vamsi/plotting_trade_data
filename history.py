@@ -19,6 +19,13 @@ import openpyxl as xl
 from openpyxl import Workbook, load_workbook                                         # pip3 install openpyxl
 import yaml
 
+# for plotting transform plots
+import numpy as np
+import math
+from scipy import signal
+import matplotlib
+import matplotlib.pyplot as plt
+
 external_stylesheets = ['https://codepen.io/chriddyp/pen/bWLwgP.css']
 
 
@@ -27,23 +34,34 @@ app = dash.Dash(__name__, external_stylesheets=external_stylesheets,
 
 app.layout = html.Div(children = [dcc.ConfirmDialog(id='confirm', message='DATA SAVED!!'),
             html.Center(html.Div(id='output-confirm')),
-            html.Center(html.Div(children = [dcc.Input(id='input-on-submit', type='text', placeholder="Enter a ticker"), 
-            dcc.Input(id='input-on-submit1', type='number', placeholder='Number of OHLCs (MAX1000)', max=1000, style={'width': '25%'}),
+            html.Center(html.Div(children = [dcc.Input(id='input-on-submit', type='text', placeholder="Enter a ticker", style={'width': '20%'}), 
+            dcc.Input(id='input-on-submit1', type='number', placeholder='Number of OHLCs (MAX1000)', max=1000, style={'width': '20%'}),
             dcc.Dropdown(id='demo-dropdown', options=[{'label': '1 Minute', 'value': '1Min'},
             {'label': '5 Minutes', 'value': '5Min'},
             {'label': '15 Minutes', 'value': '15Min'},
             {'label': '1 Day', 'value': 'day'}], placeholder="Span of each OHLC", value = "day", style={'width': '40%'})])),
-            html.Center(html.Div(html.Button('Submit', id='submit-val', n_clicks=0))),
             html.Br(),
+            html.Div(html.Center(html.Button('Submit', id='submit-val', n_clicks=0))),
+            html.Br(),
+            html.Div(id='nouse', style={'display':'none'}),      # dummy boxes
 
             html.Div(dcc.Graph(id="graph")),
             html.Div(dcc.Graph(id='carGraph')), #Graph that displays all data
             html.Div(dcc.Graph(id='filterGraph')), #Graph that shows only filtered data
             html.Div(id='display'),  #To show format of selectData
-            html.Center(html.Button("Grab Data", id='submit-val1', n_clicks=0)),
+            html.Div(html.Center(children = [html.Button("Grab Data", id='submit-val1', n_clicks=0)])),
+            html.Div(html.Hr()),
+            html.Div(html.Center(html.P(html.B("Short Time Fourier Transform")))),
+            html.Div(html.Center(children=[dcc.Input(id='fs', type='number', 
+                                                placeholder='Sampling frequency', max=1000, style={'width': '25%'}),
+                                            dcc.Input(id='fft', type='number', 
+                                                placeholder='Number of samples**', max=1000, style={'width': '25%', "margin":"10px"}),
+                                            html.Button("Plot STFT", id='submit-val12', n_clicks=0, style={"margin":"20px"})])),
+            html.Div(html.Center(html.P("**Number of samples in the fast fourier transform. Setting that value is a tradeoff between the time resolution and frequency resolution you want."))),
+            html.Div(html.Hr()),
             html.Center(html.Div(id='textarea-example-output', style={'whiteSpace': 'pre-line'})),
             html.Div(id='nouse1', style={'display':'none'}),  # dummy boxes
-            html.Div(id='nouse', style={'display':'none'})      # dummy boxes
+            html.Div(id='nouse12', style={'display':'none'})  # dummy boxes
 
   
 ]) 
@@ -204,7 +222,7 @@ def making_dataset(n_clicks1, pts, tspan, itspan, ticker):
     Input('submit-val', 'n_clicks')
     )
 def update_tables(n_clicks1, n_clicks):
-    if n_clicks>0 or n_clicks1>0:    
+    if n_clicks>0 and n_clicks1>=0:    
         df11 = pd.read_excel(r'X:\Upwork\projects\plotting_trade_data\do_not_open.xlsx',engine='openpyxl')  # pip3 install xlrd
         return html.Div(children=[
             html.Br(),
@@ -238,18 +256,16 @@ def testfunc(clicks, tspan, itspan, ticker):
     return {'data':[trace1],'layout':layout}
 
 # Show result of selecting data with either box select or lasso
-    
 @app.callback(Output('display','children'), Output('nouse','children'), [Input('carGraph','selectedData')])
 def selectData(selectData):
     if selectData:
-        return str('Points in the following range will be added to the dataset: {}'.format(selectData)), str(selectData['points'])
+        return str('Selected Points: {}'.format(selectData)), str(selectData['points'])
     else:
         return str('None selected')
+
 #Extract the 'text' component and use it to filter the dataframe and then create another graph
-    
-@app.callback(Output('filterGraph','figure'),[Input('carGraph','selectedData')], State('input-on-submit1', "value"),
-            State('demo-dropdown', 'value'), 
-            State('input-on-submit', "value"))
+@app.callback(Output('filterGraph','figure'), [Input('carGraph','selectedData')], State('input-on-submit1', "value"),
+            State('demo-dropdown', 'value'), State('input-on-submit', "value"))
 def selectData3(selectData, tspan, itspan, ticker):
     if selectData:
         api = alpaca.REST('PK7Z5SUF67ICPDK04R2M', 'ITAqIWxumbD67keejeh7yXTnrgSfnlZZZiXb759t', 'https://paper-api.alpaca.markets')
@@ -265,12 +281,70 @@ def selectData3(selectData, tspan, itspan, ticker):
     
         trace2 = go.Scatter(x=filtCars.index.to_pydatetime(), y=filtCars['close'], mode='markers+lines', text=filtCars.index)
         layout2 = go.Layout(title='Grabbed Data')
-        return {'data':[trace2],'layout':layout2}  
+
+        return {'data':[trace2],'layout':layout2}
 
     else:
         trace2 = go.Scatter()
         layout2 = go.Layout()
         return {'data':[trace2],'layout':layout2} 
+
+# Analysis plots
+@app.callback(Output('nouse12','children'), 
+            Input('submit-val12','n_clicks'), 
+            State("nouse", 'children'), 
+            State('input-on-submit1', "value"),
+            State('demo-dropdown', 'value'), 
+            State('input-on-submit', "value"),
+            State('fs', 'value'), 
+            State('fft', "value")
+            )
+def graphs_analysis(n_clicks2, pts1, tspan, itspan, ticker, fs, fft_size):
+    if n_clicks2>0:
+        api = alpaca.REST('PK7Z5SUF67ICPDK04R2M', 'ITAqIWxumbD67keejeh7yXTnrgSfnlZZZiXb759t', 'https://paper-api.alpaca.markets')
+        df = api.get_barset(ticker, itspan, limit=tspan).df[ticker]
+        pts1 = yaml.load(pts1)
+        rang1 = pts1[0]['text']
+        rang2 = pts1[len(pts1)-1]['text']
+
+        df = df.truncate(before = rang1, after = rang2) 
+
+        data = df['close'].to_numpy()   # a numpy array containing the signal to be processed
+        #fs = 800
+        #fft_size = 500
+        #data = data - np.mean(data)
+        overlap_fac = 0.5
+        hop_size = np.int32(np.floor(fft_size * (1-overlap_fac)))   
+        pad_end_size = fft_size          # the last segment can overlap the end of the data array by no more than one window size
+        total_segments = np.int32(np.ceil(len(data) / np.float32(hop_size)))    
+        t_max = len(data) / np.float32(fs)
+ 
+        window = np.hanning(fft_size)  # our half cosine window
+        inner_pad = np.zeros(fft_size) # the zeros which will be used to double each segment size
+ 
+        proc = np.concatenate((data, np.zeros(pad_end_size)))              # the data to process
+        result = np.empty((total_segments, fft_size), dtype=np.float32)    # space to hold the result
+ 
+        for i in range(total_segments):                      # for each segment
+            current_hop = hop_size * i                        # figure out the current segment offset
+            segment = proc[current_hop:current_hop+fft_size]  # get the current segment
+            windowed = segment * window                       # multiply by the half cosine function
+            padded = np.append(windowed, inner_pad)           # add 0s to double the length of the data
+            spectrum = np.fft.fft(padded) / fft_size          # take the Fourier Transform and scale by the number of samples
+            autopower = np.abs(spectrum * np.conj(spectrum))  # find the autopower spectrum
+            result[i, :] = autopower[:fft_size]               # append to the results array
+ 
+        result = 20*np.log10(result)          # scale to db
+        result = np.clip(result, -40, 200)    # clip values
+        img = plt.imshow(result, origin='lower', cmap='jet', interpolation='nearest', aspect='auto')
+        plt.xlabel("Time")
+        plt.ylabel("Frequency")
+        plt.title("STFT")
+
+        plt.show()
+        return str("Done!")
+    else:
+        return str("Failed")
 
 if __name__ == '__main__':
     app.run_server(debug=True)
