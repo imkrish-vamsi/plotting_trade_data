@@ -24,6 +24,7 @@ import numpy as np
 import math
 from scipy import signal
 import matplotlib
+matplotlib.use('tkAgg') # pip3 install tk
 import matplotlib.pyplot as plt
 
 external_stylesheets = ['https://codepen.io/chriddyp/pen/bWLwgP.css']
@@ -31,6 +32,7 @@ external_stylesheets = ['https://codepen.io/chriddyp/pen/bWLwgP.css']
 
 app = dash.Dash(__name__, external_stylesheets=external_stylesheets, 
                     suppress_callback_exceptions=True, prevent_initial_callbacks=True)
+server = app.server
 
 app.layout = html.Div(children = [dcc.ConfirmDialog(id='confirm', message='DATA SAVED!!'),
             html.Center(html.Div(id='output-confirm')),
@@ -340,11 +342,11 @@ def graphs_analysis(n_clicks2, pts1, tspan, itspan, ticker, fs, fft_size):
         plt.xlabel("Time")
         plt.ylabel("Frequency")
         plt.title("STFT")
-
+        #plt.savefig('stft.png', bbox_inches='tight')
         plt.show()
         return str("Done!")
     else:
         return str("Failed")
 
 if __name__ == '__main__':
-    app.run_server(debug=True)
+    app.run_server(threaded=True)
