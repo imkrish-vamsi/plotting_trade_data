@@ -24,8 +24,14 @@ import numpy as np
 import math
 from scipy import signal
 import matplotlib
-matplotlib.use('tkAgg') # pip3 install tk
+matplotlib.use('TkAgg') # pip3 install tk
 import matplotlib.pyplot as plt
+import tkinter
+from matplotlib.backends.backend_tkagg import (
+    FigureCanvasTkAgg, NavigationToolbar2Tk)
+# Implement the default Matplotlib key bindings.
+from matplotlib.backend_bases import key_press_handler
+from matplotlib.figure import Figure
 
 external_stylesheets = ['https://codepen.io/chriddyp/pen/bWLwgP.css']
 
@@ -51,6 +57,7 @@ app.layout = html.Div(children = [dcc.ConfirmDialog(id='confirm', message='DATA 
             html.Div(dcc.Graph(id='carGraph')), #Graph that displays all data
             html.Div(dcc.Graph(id='filterGraph')), #Graph that shows only filtered data
             html.Div(id='display'),  #To show format of selectData
+            html.Br(),
             html.Div(html.Center(children = [html.Button("Grab Data", id='submit-val1', n_clicks=0)])),
             html.Div(html.Hr()),
             html.Div(html.Center(html.P(html.B("Short Time Fourier Transform")))),
@@ -63,7 +70,8 @@ app.layout = html.Div(children = [dcc.ConfirmDialog(id='confirm', message='DATA 
             html.Div(html.Hr()),
             html.Center(html.Div(id='textarea-example-output', style={'whiteSpace': 'pre-line'})),
             html.Div(id='nouse1', style={'display':'none'}),  # dummy boxes
-            html.Div(id='nouse12', style={'display':'none'})  # dummy boxes
+            html.Div(id='nouse12', style={'display':'none'}
+                        )  # dummy boxes
 
   
 ]) 
@@ -314,7 +322,6 @@ def graphs_analysis(n_clicks2, pts1, tspan, itspan, ticker, fs, fft_size):
         data = df['close'].to_numpy()   # a numpy array containing the signal to be processed
         #fs = 800
         #fft_size = 500
-        #data = data - np.mean(data)
         overlap_fac = 0.5
         hop_size = np.int32(np.floor(fft_size * (1-overlap_fac)))   
         pad_end_size = fft_size          # the last segment can overlap the end of the data array by no more than one window size
@@ -338,12 +345,30 @@ def graphs_analysis(n_clicks2, pts1, tspan, itspan, ticker, fs, fft_size):
  
         result = 20*np.log10(result)          # scale to db
         result = np.clip(result, -40, 200)    # clip values
-        img = plt.imshow(result, origin='lower', cmap='jet', interpolation='nearest', aspect='auto')
-        plt.xlabel("Time")
-        plt.ylabel("Frequency")
-        plt.title("STFT")
-        #plt.savefig('stft.png', bbox_inches='tight')
-        plt.show()
+        
+        root = tkinter.Tk()
+        root.wm_title("STFT")
+
+        fig = Figure(figsize=(5, 4), dpi=100)
+
+        fig.add_subplot(111).imshow(result, origin='lower', cmap='jet', interpolation='nearest', aspect='auto')
+
+        canvas = FigureCanvasTkAgg(fig, master=root)  # A tk.DrawingArea.
+        canvas.draw()
+        canvas.get_tk_widget().pack(side=tkinter.TOP, fill=tkinter.BOTH, expand=1)
+
+        toolbar = NavigationToolbar2Tk(canvas, root)
+        toolbar.update()
+        canvas.get_tk_widget().pack(side=tkinter.TOP, fill=tkinter.BOTH, expand=1)
+        
+        def _quit():
+            root.quit()     # stops mainloop
+            root.destroy()  # this is necessary on Windows to prevent
+                            # Fatal Python Error: PyEval_RestoreThread: NULL tstate
+
+        button = tkinter.Button(master=root, text="QUIT", command=_quit)
+        button.pack(side=tkinter.BOTTOM)
+        tkinter.mainloop()
         return str("Done!")
     else:
         return str("Failed")
