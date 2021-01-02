@@ -24,7 +24,7 @@ import numpy as np
 import math
 from scipy import signal
 import matplotlib
-matplotlib.use('TkAgg') # pip3 install tk
+matplotlib.use('Agg') # pip3 install tk
 import matplotlib.pyplot as plt
 import tkinter
 from matplotlib.backends.backend_tkagg import (
@@ -360,7 +360,13 @@ def graphs_analysis(n_clicks2, pts1, tspan, itspan, ticker, fs, fft_size):
         toolbar = NavigationToolbar2Tk(canvas, root)
         toolbar.update()
         canvas.get_tk_widget().pack(side=tkinter.TOP, fill=tkinter.BOTH, expand=1)
-        
+
+        def on_key_press(event):
+            print("you pressed {}".format(event.key))
+            key_press_handler(event, canvas, toolbar)
+
+        canvas.mpl_connect("key_press_event", on_key_press)
+
         def _quit():
             root.quit()     # stops mainloop
             root.destroy()  # this is necessary on Windows to prevent
@@ -369,6 +375,7 @@ def graphs_analysis(n_clicks2, pts1, tspan, itspan, ticker, fs, fft_size):
         button = tkinter.Button(master=root, text="QUIT", command=_quit)
         button.pack(side=tkinter.BOTTOM)
         tkinter.mainloop()
+        n_clicks2 = 0
         return str("Done!")
     else:
         return str("Failed")
